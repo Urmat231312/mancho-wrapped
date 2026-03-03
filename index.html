@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mancho Wrapped</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Manrope:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #07070f;
+  --card: #0f0f1a;
+  --y: #f7c14b;
+  --r: #ff6b6b;
+  --t: #4ecdc4;
+  --p: #a78bfa;
+  --g: #6ee7b7;
+  --text: #f0f0f8;
+  --muted: #55556e;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; overflow:hidden; }
+body { background:var(--bg); color:var(--text); font-family:'Manrope',sans-serif; }
+
+/* ============ UPLOAD SCREEN ============ */
+#uploadScreen {
+  height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:32px;
+  position:relative;
+  overflow:hidden;
+}
+.upload-blob {
+  position:absolute;
+  border-radius:50%;
+  filter:blur(90px);
+  opacity:0.25;
+  pointer-events:none;
+}
+.ub1{width:500px;height:500px;background:var(--p);top:-150px;right:-150px;animation:uf1 9s ease-in-out infinite;}
+.ub2{width:400px;height:400px;background:var(--y);bottom:-120px;left:-120px;animation:uf2 11s ease-in-out infinite;}
+@keyframes uf1{0%,100%{transform:translate(0,0)}50%{transform:translate(20px,-25px)}}
+@keyframes uf2{0%,100%{transform:translate(0,0)}50%{transform:translate(-18px,18px)}}
+
+.upload-logo {
+  font-family:'Unbounded',sans-serif;
+  font-size:12px;
+  letter-spacing:4px;
+  text-transform:uppercase;
+  color:var(--y);
+  margin-bottom:48px;
+}
+.upload-title {
+  font-family:'Unbounded',sans-serif;
+  font-size:clamp(36px,9vw,72px);
+  font-weight:900;
+  line-height:1.05;
+  text-align:center;
+  margin-bottom:16px;
+}
+.upload-title span { color:var(--y); }
+.upload-sub {
+  font-size:15px;
+  color:var(--muted);
+  text-align:center;
+  max-width:380px;
+  line-height:1.7;
+  font-weight:300;
+  margin-bottom:52px;
+}
+
+.drop-zone {
+  width:100%;
+  max-width:440px;
+  border:1.5px dashed rgba(247,193,75,0.35);
+  border-radius:24px;
+  padding:48px 32px;
+  text-align:center;
+  cursor:pointer;
+  transition:all 0.3s;
+  background:rgba(247,193,75,0.03);
+  position:relative;
+}
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color:var(--y);
+  background:rgba(247,193,75,0.07);
+  transform:scale(1.01);
+}
+.drop-icon { font-size:48px; margin-bottom:16px; display:block; }
+.drop-main { font-family:'Unbounded',sans-serif; font-size:14px; font-weight:700; margin-bottom:8px; }
+.drop-hint { font-size:13px; color:var(--muted); margin-bottom:24px; }
+.drop-btn {
+  background:var(--y);
+  color:#07070f;
+  border:none;
+  padding:13px 32px;
+  border-radius:100px;
+  font-family:'Unbounded',sans-serif;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+  letter-spacing:1px;
+  transition:all 0.2s;
+  box-shadow:0 0 30px rgba(247,193,75,0.35);
+}
+.drop-btn:hover{transform:scale(1.05);box-shadow:0 0 50px rgba(247,193,75,0.5);}
+#fileInput{position:absolute;inset:0;opacity:0;cursor:pointer;}
+
+.upload-steps {
+  display:flex;
+  gap:32px;
+  margin-top:48px;
+  flex-wrap:wrap;
+  justify-content:center;
+}
+.step {
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  max-width:160px;
+}
+.step-num {
+  font-family:'Unbounded',sans-serif;
+  font-size:11px;
+  font-weight:900;
+  color:var(--y);
+  background:rgba(247,193,75,0.12);
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+  margin-top:1px;
+}
+.step-text { font-size:12px; color:var(--muted); line-height:1.5; }
+.step-text b { color:var(--text); display:block; margin-bottom:2px; font-size:13px; }
+
+/* ============ WRAPPED SCREEN ============ */
+#wrappedScreen { display:none; height:100vh; position:relative; overflow:hidden; }
+
+/* Progress */
+#progressBar {
+  position:fixed;top:0;left:0;height:3px;
+  background:linear-gradient(90deg,var(--y),var(--r));
+  z-index:200;transition:width 0.4s ease;
+  box-shadow:0 0 12px var(--y);
+}
+/* Dots */
+#dots {
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  display:flex;gap:7px;z-index:200;
+}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--muted);cursor:pointer;transition:all 0.3s;}
+.dot.active{background:var(--y);transform:scale(1.5);box-shadow:0 0 8px var(--y);}
+
+/* Share button */
+#shareBtn {
+  position:fixed;bottom:20px;right:20px;z-index:200;
+  background:rgba(255,255,255,0.07);
+  border:1px solid rgba(255,255,255,0.12);
+  color:var(--text);
+  padding:10px 18px;
+  border-radius:100px;
+  font-family:'Unbounded',sans-serif;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:1px;
+  cursor:pointer;
+  display:flex;align-items:center;gap:8px;
+  backdrop-filter:blur(10px);
+  transition:all 0.2s;
+}
+#shareBtn:hover{background:rgba(247,193,75,0.15);border-color:var(--y);color:var(--y);}
+#shareBtn .share-icon{font-size:15px;}
+
+/* Nav */
+#navBtns{position:fixed;right:20px;top:50%;transform:translateY(-50%);z-index:200;display:flex;flex-direction:column;gap:8px;}
+.nbtn{
+  width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,0.1);
+  background:rgba(255,255,255,0.04);color:var(--text);font-size:16px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  backdrop-filter:blur(8px);transition:all 0.2s;
+}
+.nbtn:hover{background:rgba(255,255,255,0.1);}
+
+/* ============ SLIDES ============ */
+.slide {
+  position:absolute;inset:0;
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  padding:60px 28px 72px;
+  overflow:hidden;
+}
+.slide.active{display:flex;animation:fadeUp 0.55s cubic-bezier(0.22,1,0.36,1);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
+.slide>*{position:relative;z-index:1;}
+.slide::before{
+  content:'';position:absolute;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;
+}
+
+/* Blobs */
+.blob{position:absolute;border-radius:50%;filter:blur(80px);opacity:0.3;pointer-events:none;z-index:0;}
+
+/* Shared text */
+.s-tag{font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;}
+.s-big{font-family:'Unbounded',sans-serif;font-size:clamp(90px,22vw,180px);font-weight:900;line-height:1;letter-spacing:-5px;}
+.s-head{font-family:'Unbounded',sans-serif;font-size:clamp(22px,5vw,38px);font-weight:700;line-height:1.2;text-align:center;max-width:440px;margin-bottom:14px;}
+.s-desc{font-size:14px;color:var(--muted);max-width:360px;text-align:center;line-height:1.75;font-weight:300;}
+.y{color:var(--y);text-shadow:0 0 60px rgba(247,193,75,0.4);}
+.r{color:var(--r);text-shadow:0 0 60px rgba(255,107,107,0.4);}
+.t{color:var(--t);text-shadow:0 0 60px rgba(78,205,196,0.4);}
+.p{color:var(--p);text-shadow:0 0 60px rgba(167,139,250,0.4);}
+
+/* Cover */
+#s0{background:var(--bg);}
+.cover-bg{font-family:'Unbounded',sans-serif;font-size:clamp(70px,18vw,150px);font-weight:900;color:transparent;-webkit-text-stroke:1px rgba(247,193,75,0.12);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);white-space:nowrap;pointer-events:none;letter-spacing:-5px;}
+.cover-logo{font-family:'Unbounded',sans-serif;font-size:11px;letter-spacing:5px;text-transform:uppercase;color:var(--y);margin-bottom:24px;}
+.cover-name{font-family:'Unbounded',sans-serif;font-size:clamp(30px,8vw,60px);font-weight:900;line-height:1.1;text-align:center;background:linear-gradient(135deg,var(--y),var(--r));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:10px;}
+.cover-sub{font-size:14px;color:var(--muted);margin-bottom:40px;text-align:center;}
+.cover-cta{background:var(--y);color:#07070f;border:none;padding:15px 38px;border-radius:100px;font-family:'Unbounded',sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:1px;transition:all 0.2s;box-shadow:0 0 40px rgba(247,193,75,0.35);}
+.cover-cta:hover{transform:scale(1.05);box-shadow:0 0 60px rgba(247,193,75,0.6);}
+
+/* Gauge */
+.gauge-wrap{position:relative;width:220px;height:220px;margin:24px auto;}
+.gauge-svg{width:220px;height:220px;transform:rotate(-90deg);}
+.gauge-track{fill:none;stroke:rgba(255,255,255,0.05);stroke-width:16;}
+.gauge-fill{fill:none;stroke:var(--t);stroke-width:16;stroke-linecap:round;transition:stroke-dashoffset 1.6s cubic-bezier(0.22,1,0.36,1);}
+.gauge-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;}
+.gauge-pct{font-family:'Unbounded',sans-serif;font-size:44px;font-weight:900;color:var(--t);text-shadow:0 0 30px rgba(78,205,196,0.5);}
+.gauge-lbl{font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;}
+
+/* Bar chart */
+.bars{display:flex;align-items:flex-end;gap:8px;height:150px;margin-top:28px;width:100%;max-width:440px;}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;}
+.bar-outer{width:100%;flex:1;display:flex;align-items:flex-end;gap:3px;position:relative;}
+.b{border-radius:5px 5px 0 0;transition:height 1.2s cubic-bezier(0.22,1,0.36,1);height:0;}
+.b-c{background:linear-gradient(180deg,var(--p),rgba(167,139,250,0.2));flex:1;}
+.b-d{background:linear-gradient(180deg,var(--y),rgba(247,193,75,0.2));flex:1;}
+.bar-lbl{font-size:9px;color:var(--muted);margin-top:6px;letter-spacing:0.5px;}
+.chart-legend{display:flex;gap:20px;justify-content:center;margin-top:16px;}
+.leg{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted);}
+.leg-dot{width:9px;height:9px;border-radius:2px;}
+
+/* Project bars */
+.proj-list{width:100%;max-width:460px;margin-top:28px;}
+.prow{display:flex;align-items:center;gap:14px;margin-bottom:16px;animation:si 0.5s ease both;}
+@keyframes si{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:translateX(0)}}
+.prow:nth-child(1){animation-delay:.05s}.prow:nth-child(2){animation-delay:.12s}.prow:nth-child(3){animation-delay:.2s}.prow:nth-child(4){animation-delay:.28s}.prow:nth-child(5){animation-delay:.36s}
+.prank{font-family:'Unbounded',sans-serif;font-size:10px;color:var(--muted);width:18px;flex-shrink:0;}
+.pbw{flex:1;}
+.pname{font-size:12px;font-weight:600;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ptrack{height:5px;background:rgba(255,255,255,0.05);border-radius:100px;overflow:hidden;}
+.pfill{height:100%;border-radius:100px;transition:width 1.2s cubic-bezier(0.22,1,0.36,1);width:0;}
+.pcnt{font-family:'Unbounded',sans-serif;font-size:13px;font-weight:700;width:26px;text-align:right;flex-shrink:0;}
+
+/* Direction rows */
+.dir-list{width:100%;max-width:440px;margin-top:28px;display:flex;flex-direction:column;gap:11px;}
+.drow{display:flex;align-items:center;gap:13px;animation:si 0.5s ease both;}
+.drow:nth-child(1){animation-delay:.05s}.drow:nth-child(2){animation-delay:.12s}.drow:nth-child(3){animation-delay:.2s}.drow:nth-child(4){animation-delay:.28s}.drow:nth-child(5){animation-delay:.36s}.drow:nth-child(6){animation-delay:.44s}
+.dicon{font-size:18px;width:32px;text-align:center;}
+.dinfo{flex:1;}
+.dname{font-size:13px;font-weight:600;margin-bottom:4px;}
+.dtrack{height:5px;background:rgba(255,255,255,0.05);border-radius:100px;overflow:hidden;}
+.dfill{height:100%;border-radius:100px;transition:width 1.2s cubic-bezier(0.22,1,0.36,1);width:0;}
+.dcnt{font-family:'Unbounded',sans-serif;font-size:13px;font-weight:700;width:24px;text-align:right;flex-shrink:0;}
+
+/* Finale pills */
+.pills{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:440px;margin-bottom:32px;}
+.pill{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:100px;padding:9px 18px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:7px;}
+.pdot{width:7px;height:7px;border-radius:50%;}
+
+/* Toast */
+#toast{
+  position:fixed;top:24px;left:50%;transform:translateX(-50%) translateY(-80px);
+  background:var(--t);color:#07070f;
+  padding:12px 28px;border-radius:100px;
+  font-family:'Unbounded',sans-serif;font-size:12px;font-weight:700;
+  z-index:999;transition:transform 0.4s cubic-bezier(0.22,1,0.36,1);
+  white-space:nowrap;
+}
+#toast.show{transform:translateX(-50%) translateY(0);}
+
+/* Loading overlay */
+#loadingOverlay{
+  position:fixed;inset:0;background:rgba(7,7,15,0.9);
+  display:none;align-items:center;justify-content:center;
+  flex-direction:column;gap:16px;z-index:500;backdrop-filter:blur(4px);
+}
+.spinner{width:40px;height:40px;border:3px solid rgba(247,193,75,0.2);border-top-color:var(--y);border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-family:'Unbounded',sans-serif;font-size:12px;letter-spacing:2px;color:var(--muted);}
+</style>
+</head>
+<body>
+
+<!-- UPLOAD SCREEN -->
+<div id="uploadScreen">
+  <div class="upload-blob ub1"></div>
+  <div class="upload-blob ub2"></div>
+
+  <div class="upload-logo">✦ Mancho School</div>
+  <div class="upload-title">Твой<br><span>Asana</span><br>Wrapped</div>
+  <div class="upload-sub">Загрузи CSV-экспорт из Asana и узнай, как прошёл твой год в Mancho</div>
+
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="fileInput" accept=".csv">
+    <span class="drop-icon">📂</span>
+    <div class="drop-main">Перетащи CSV сюда</div>
+    <div class="drop-hint">или нажми кнопку ниже</div>
+    <button class="drop-btn" onclick="document.getElementById('fileInput').click()">Выбрать файл</button>
+  </div>
+
+  <div class="upload-steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text"><b>Открой Asana</b>Зайди в My Tasks или нужный проект</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text"><b>Экспортируй</b>··· → Export → CSV</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text"><b>Загрузи сюда</b>И получи свой Wrapped 🎉</div>
+    </div>
+  </div>
+</div>
+
+<!-- WRAPPED SCREEN -->
+<div id="wrappedScreen">
+  <div id="progressBar"></div>
+  <div id="dots"></div>
+  <button id="shareBtn" onclick="captureSlide()"><span class="share-icon">⬇️</span> Сохранить сторис</button>
+
+  <div id="navBtns">
+    <button class="nbtn" onclick="prevSlide()">↑</button>
+    <button class="nbtn" onclick="nextSlide()">↓</button>
+  </div>
+
+  <!-- Slide 0: Cover -->
+  <div class="slide" id="s0">
+    <div class="blob" style="width:450px;height:450px;background:var(--y);top:-150px;right:-130px;animation:uf1 9s ease-in-out infinite;"></div>
+    <div class="blob" style="width:350px;height:350px;background:var(--p);bottom:-100px;left:-100px;animation:uf2 11s ease-in-out infinite;"></div>
+    <div class="cover-bg" id="coverYear">2025–26</div>
+    <div class="cover-logo">✦ Mancho School · Asana Wrapped</div>
+    <div class="cover-name" id="coverName">Имя Студента</div>
+    <div class="cover-sub" id="coverSub">Твой год в задачах</div>
+    <button class="cover-cta" onclick="nextSlide()">Посмотреть результаты →</button>
+  </div>
+
+  <!-- Slide 1: Tasks completed -->
+  <div class="slide" id="s1" style="background:#07070f;">
+    <div class="blob" style="width:380px;height:380px;background:var(--y);top:-120px;left:-80px;opacity:0.2;"></div>
+    <div class="s-tag">Выполнено задач</div>
+    <div class="s-big y" id="bigNum">0</div>
+    <div class="s-head">задач закрыто</div>
+    <div class="s-desc" id="taskDesc">Ты серьёзно поработал этот период.</div>
+  </div>
+
+  <!-- Slide 2: On time -->
+  <div class="slide" id="s2" style="background:#060f09;">
+    <div class="blob" style="width:350px;height:350px;background:var(--t);bottom:-100px;right:-80px;opacity:0.2;"></div>
+    <div class="s-tag">Пунктуальность</div>
+    <div class="gauge-wrap">
+      <svg class="gauge-svg" viewBox="0 0 200 200">
+        <circle class="gauge-track" cx="100" cy="100" r="80"/>
+        <circle class="gauge-fill" id="gaugeFill" cx="100" cy="100" r="80"/>
+      </svg>
+      <div class="gauge-center">
+        <div class="gauge-pct" id="gaugePct">--%</div>
+        <div class="gauge-lbl">в срок</div>
+      </div>
+    </div>
+    <div class="s-head" id="onTimeHead">Результат</div>
+    <div class="s-desc" id="onTimeDesc">Задач с дедлайном выполнено.</div>
+  </div>
+
+  <!-- Slide 3: Projects -->
+  <div class="slide" id="s3" style="background:#0b0714;">
+    <div class="s-tag">Топ проекты</div>
+    <div class="s-head" style="text-align:left;max-width:460px">Где ты провёл больше всего времени</div>
+    <div class="proj-list" id="projList"></div>
+  </div>
+
+  <!-- Slide 4: Monthly -->
+  <div class="slide" id="s4" style="background:#070b14;">
+    <div class="s-tag">Динамика</div>
+    <div class="s-head">Ритм работы по месяцам</div>
+    <div style="width:100%;max-width:460px;">
+      <div class="bars" id="barsWrap"></div>
+      <div class="chart-legend">
+        <div class="leg"><div class="leg-dot" style="background:var(--p)"></div>Создано</div>
+        <div class="leg"><div class="leg-dot" style="background:var(--y)"></div>Выполнено</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 5: Directions -->
+  <div class="slide" id="s5" style="background:#07100a;">
+    <div class="s-tag">Фокус</div>
+    <div class="s-head">Что создавал чаще всего</div>
+    <div class="dir-list" id="dirList"></div>
+  </div>
+
+  <!-- Slide 6: Finale -->
+  <div class="slide" id="s6" style="background:radial-gradient(ellipse at center,#16102a 0%,var(--bg) 70%);">
+    <div style="font-size:60px;margin-bottom:20px;animation:bounce 2s ease-in-out infinite;">🏆</div>
+    <div class="s-head" style="font-size:clamp(24px,6vw,44px);" id="finaleHead">Итоги</div>
+    <div class="pills" id="pillsWrap"></div>
+    <div class="s-desc" id="finaleDesc">Продолжай в том же духе!</div>
+  </div>
+
+</div>
+
+<div id="toast">📸 Сохранено!</div>
+<div id="loadingOverlay"><div class="spinner"></div><div class="loading-text">ГЕНЕРИРУЕМ...</div></div>
+
+<script>
+// ============ CSV PARSE ============
+function parseCSV(text) {
+  // Strip BOM
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+
+  const records = [];
+  let pos = 0;
+
+  function parseField() {
+    if (pos >= text.length) return '';
+    if (text[pos] === '"') {
+      pos++;
+      let val = '';
+      while (pos < text.length) {
+        if (text[pos] === '"') {
+          if (text[pos+1] === '"') { val += '"'; pos += 2; }
+          else { pos++; break; }
+        } else {
+          val += text[pos++];
+        }
+      }
+      return val;
+    } else {
+      let val = '';
+      while (pos < text.length && text[pos] !== ',' && text[pos] !== '\n' && text[pos] !== '\r') {
+        val += text[pos++];
+      }
+      return val;
+    }
+  }
+
+  while (pos < text.length) {
+    const row = [];
+    while (true) {
+      row.push(parseField());
+      if (pos >= text.length || text[pos] === '\n' || text[pos] === '\r') {
+        if (text[pos] === '\r' && text[pos+1] === '\n') pos++;
+        pos++;
+        break;
+      }
+      pos++;
+    }
+    records.push(row);
+  }
+
+  while (records.length && records[records.length-1].every(c => c === '')) records.pop();
+
+  const headers = records[0].map(h => h.trim());
+  return records.slice(1).map(row => {
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = (row[i] || '').trim());
+    return obj;
+  });
+}
+
+function parseDate(s) {
+  if (!s) return null;
+  try { return new Date(s.slice(0,10)); } catch { return null; }
+}
+
+const MONTH_NAMES = {
+  '01':'Янв','02':'Фев','03':'Мар','04':'Апр','05':'Май','06':'Июн',
+  '07':'Июл','08':'Авг','09':'Сен','10':'Окт','11':'Ноя','12':'Дек'
+};
+
+function analyzeCSV(rows) {
+  const completed = rows.filter(r => r['Completed At']);
+  let onTime = 0, late = 0;
+  completed.forEach(r => {
+    const due = parseDate(r['Due Date']), comp = parseDate(r['Completed At']);
+    if (due && comp) { comp <= due ? onTime++ : late++; }
+  });
+
+  const projects = {};
+  rows.forEach(r => {
+    (r['Projects']||'').split(',').forEach(p => {
+      p = p.trim(); if (p) projects[p] = (projects[p]||0) + 1;
+    });
+  });
+
+  const months = {};
+  rows.forEach(r => {
+    const c = r['Created At'], d = r['Completed At'];
+    if (c) { const k = c.slice(0,7); if (!months[k]) months[k] = {c:0,d:0}; months[k].c++; }
+    if (d) { const k = d.slice(0,7); if (!months[k]) months[k] = {c:0,d:0}; months[k].d++; }
+  });
+
+  const directions = {};
+  rows.forEach(r => {
+    const d = (r['Маркетинг направление']||r['Tags']||'').trim();
+    if (d) { d.split(',').forEach(x => { x=x.trim(); if(x) directions[x]=(directions[x]||0)+1; }); }
+  });
+
+  const name = rows.find(r => r['Assignee'])?.['Assignee'] || 'Студент';
+
+  return { rows, completed, onTime, late, projects, months, directions, name };
+}
+
+// ============ STATE ============
+let SLIDES = 7;
+let current = 0;
+let data = null;
+
+// ============ UPLOAD ============
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
+
+function handleFile(file) {
+  if (!file) return;
+  const lo = document.getElementById('loadingOverlay');
+  lo.style.display = 'flex';
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const rows = parseCSV(e.target.result);
+      data = analyzeCSV(rows);
+      buildWrapped(data);
+      document.getElementById('uploadScreen').style.display = 'none';
+      document.getElementById('wrappedScreen').style.display = 'block';
+      lo.style.display = 'none';
+      buildDots();
+      goTo(0);
+    } catch(err) {
+      lo.style.display = 'none';
+      alert('Ошибка при чтении файла. Убедись что это CSV из Asana.');
+      console.error(err);
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+// ============ BUILD WRAPPED ============
+function buildWrapped(d) {
+  // Cover
+  document.getElementById('coverName').textContent = d.name;
+  document.getElementById('coverSub').textContent = `${d.rows.length} задач · Mancho School`;
+
+  // Slide 1
+  document.getElementById('taskDesc').textContent =
+    `Из ${d.rows.length} задач ты завершил ${d.completed.length}. ${d.completed.length >= d.rows.length * 0.8 ? 'Мощный результат! 💪' : 'Есть куда расти!'}`;
+
+  // Slide 2 — gauge
+  const total = d.onTime + d.late;
+  const pct = total > 0 ? Math.round(d.onTime / total * 100) : 0;
+  document.getElementById('gaugePct').textContent = pct + '%';
+  document.getElementById('onTimeHead').textContent = pct >= 80 ? 'Почти идеально 🎯' : pct >= 60 ? 'Неплохо!' : 'Есть резервы';
+  document.getElementById('onTimeDesc').textContent =
+    total > 0 ? `${d.onTime} из ${total} задач с дедлайном сданы вовремя. ${d.late > 0 ? `${d.late} ушли за дедлайн — в следующий раз исправим.` : 'Всё в срок!'}` : 'Задачи без дедлайнов.';
+
+  // Slide 3 — projects
+  buildProjects(d.projects);
+
+  // Slide 4 — monthly
+  buildChart(d.months);
+
+  // Slide 5 — directions
+  buildDirections(d.directions);
+
+  // Slide 6 — finale
+  const topProj = Object.entries(d.projects).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('finaleHead').textContent = `${d.name.split(' ')[0]}, ты закрыл ${d.completed.length} задач! 🏆`;
+  document.getElementById('finaleDesc').textContent = 'Продолжай в том же духе — Mancho School гордится тобой 🚀';
+  buildPills(d, topProj);
+}
+
+const PROJ_COLORS = ['var(--p)','var(--y)','var(--t)','var(--r)','var(--muted)'];
+function buildProjects(projects) {
+  const wrap = document.getElementById('projList');
+  wrap.innerHTML = '';
+  const sorted = Object.entries(projects).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  if (!sorted.length) { wrap.innerHTML='<div class="s-desc">Нет данных по проектам</div>'; return; }
+  const max = sorted[0][1];
+  sorted.forEach(([name,cnt],i) => {
+    const row = document.createElement('div'); row.className='prow';
+    row.innerHTML=`<div class="prank">#${i+1}</div>
+      <div class="pbw">
+        <div class="pname">${name}</div>
+        <div class="ptrack"><div class="pfill" id="pf${i}" style="background:${PROJ_COLORS[i]}"></div></div>
+      </div>
+      <div class="pcnt" style="color:${PROJ_COLORS[i]}">${cnt}</div>`;
+    wrap.appendChild(row);
+    setTimeout(()=>{ document.getElementById(`pf${i}`).style.width=(cnt/max*100)+'%'; },120+i*60);
+  });
+}
+
+function buildChart(months) {
+  const wrap = document.getElementById('barsWrap');
+  wrap.innerHTML = '';
+  const sorted = Object.keys(months).sort().slice(-6);
+  if (!sorted.length) return;
+  const maxV = Math.max(...sorted.map(k=>Math.max(months[k].c,months[k].d)));
+  sorted.forEach((k,i) => {
+    const m = months[k];
+    const hC = maxV > 0 ? (m.c/maxV*130) : 0;
+    const hD = maxV > 0 ? (m.d/maxV*130) : 0;
+    const mo = k.slice(5,7);
+    const col = document.createElement('div'); col.className='bar-col';
+    col.innerHTML=`<div class="bar-outer">
+        <div class="b b-c" id="bc${i}" style="height:0"></div>
+        <div class="b b-d" id="bd${i}" style="height:0"></div>
+      </div>
+      <div class="bar-lbl">${MONTH_NAMES[mo]||mo}</div>`;
+    wrap.appendChild(col);
+    setTimeout(()=>{ document.getElementById(`bc${i}`).style.height=hC+'px'; document.getElementById(`bd${i}`).style.height=hD+'px'; },100+i*70);
+  });
+}
+
+const DIR_ICONS = { Post:'📝', SMM:'📱', Website:'🌐', Ads:'🎯', Analytics:'📊', Video:'🎬', Product:'⚙️', default:'✨' };
+const DIR_COLORS = ['var(--y)','var(--p)','var(--t)','var(--r)','#f8a4c8','var(--muted)'];
+function buildDirections(directions) {
+  const wrap = document.getElementById('dirList');
+  wrap.innerHTML = '';
+  const sorted = Object.entries(directions).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  if (!sorted.length) { wrap.innerHTML='<div class="s-desc">Нет данных по направлениям</div>'; return; }
+  const max = sorted[0][1];
+  sorted.forEach(([name,cnt],i) => {
+    const icon = DIR_ICONS[name] || DIR_ICONS.default;
+    const color = DIR_COLORS[i];
+    const row = document.createElement('div'); row.className='drow';
+    row.style.animationDelay=(i*0.08)+'s';
+    row.innerHTML=`<div class="dicon">${icon}</div>
+      <div class="dinfo">
+        <div class="dname">${name}</div>
+        <div class="dtrack"><div class="dfill" id="df${i}" style="background:${color}"></div></div>
+      </div>
+      <div class="dcnt" style="color:${color}">${cnt}</div>`;
+    wrap.appendChild(row);
+    setTimeout(()=>{ document.getElementById(`df${i}`).style.width=(cnt/max*100)+'%'; },120+i*60);
+  });
+}
+
+function buildPills(d, topProj) {
+  const wrap = document.getElementById('pillsWrap');
+  const pills = [
+    { label:`${d.rows.length} задач всего`, color:'var(--y)' },
+    { label:`${d.completed.length} выполнено`, color:'var(--t)' },
+    { label:`${d.onTime + d.late > 0 ? Math.round(d.onTime/(d.onTime+d.late)*100) : '-'}% в срок`, color:'var(--p)' },
+  ];
+  if (topProj) pills.push({ label:`${topProj[0].split(' ')[0]} — главный проект`, color:'var(--r)' });
+  const dirs = Object.entries(d.directions).sort((a,b)=>b[1]-a[1])[0];
+  if (dirs) pills.push({ label:`${dirs[0]}: ${dirs[1]} задач`, color:'#f8a4c8' });
+  wrap.innerHTML = pills.map(p=>`<div class="pill"><div class="pdot" style="background:${p.color}"></div>${p.label}</div>`).join('');
+}
+
+// ============ NAVIGATION ============
+function buildDots() {
+  const wrap = document.getElementById('dots');
+  wrap.innerHTML='';
+  for(let i=0;i<SLIDES;i++){
+    const d=document.createElement('div');
+    d.className='dot'+(i===0?' active':'');
+    d.onclick=()=>goTo(i);
+    wrap.appendChild(d);
+  }
+}
+
+function updateUI() {
+  document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===current));
+  document.getElementById('progressBar').style.width=((current+1)/SLIDES*100)+'%';
+}
+
+function goTo(n) {
+  if(n<0||n>=SLIDES)return;
+  document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));
+  current=n;
+  document.getElementById(`s${current}`).classList.add('active');
+  updateUI();
+  onEnter(current);
+}
+function nextSlide(){goTo(current+1);}
+function prevSlide(){goTo(current-1);}
+
+function onEnter(n) {
+  if(n===1) countUp(data.completed.length);
+  if(n===2) animateGauge();
+}
+
+function countUp(target) {
+  const el=document.getElementById('bigNum');
+  const start=performance.now();
+  const dur=1200;
+  function f(now){
+    const p=Math.min((now-start)/dur,1);
+    el.textContent=Math.round((1-Math.pow(1-p,3))*target);
+    if(p<1)requestAnimationFrame(f);
+  }
+  requestAnimationFrame(f);
+}
+
+function animateGauge() {
+  const fill=document.getElementById('gaugeFill');
+  const r=80, circ=2*Math.PI*r;
+  const total=data.onTime+data.late;
+  const pct=total>0?data.onTime/total:0;
+  fill.style.strokeDasharray=circ;
+  fill.style.strokeDashoffset=circ;
+  setTimeout(()=>{ fill.style.strokeDashoffset=circ*(1-pct); },80);
+}
+
+// ============ KEYBOARD / TOUCH / WHEEL ============
+document.addEventListener('keydown',e=>{
+  if(['ArrowDown','ArrowRight'].includes(e.key))nextSlide();
+  if(['ArrowUp','ArrowLeft'].includes(e.key))prevSlide();
+});
+let ty=0;
+document.addEventListener('touchstart',e=>ty=e.touches[0].clientY);
+document.addEventListener('touchend',e=>{
+  const diff=ty-e.changedTouches[0].clientY;
+  if(Math.abs(diff)>40){diff>0?nextSlide():prevSlide();}
+});
+let wLock=false;
+document.addEventListener('wheel',e=>{
+  if(wLock)return; wLock=true;
+  e.deltaY>0?nextSlide():prevSlide();
+  setTimeout(()=>wLock=false,700);
+},{passive:true});
+
+// ============ CAPTURE SLIDE ============
+async function captureSlide() {
+  const lo=document.getElementById('loadingOverlay');
+  lo.style.display='flex';
+  try {
+    const slide=document.getElementById(`s${current}`);
+    const canvas=await html2canvas(slide,{
+      backgroundColor:null,
+      scale:2,
+      useCORS:true,
+      width:slide.offsetWidth,
+      height:slide.offsetHeight,
+      logging:false
+    });
+
+    // Crop to 9:16 story format
+    const storyW=1080, storyH=1920;
+    const out=document.createElement('canvas');
+    out.width=storyW; out.height=storyH;
+    const ctx=out.getContext('2d');
+    ctx.fillStyle='#07070f';
+    ctx.fillRect(0,0,storyW,storyH);
+    // Scale canvas to fit 9:16
+    const scaleX=storyW/canvas.width, scaleY=storyH/canvas.height;
+    const scale=Math.min(scaleX,scaleY);
+    const x=(storyW-canvas.width*scale)/2, y=(storyH-canvas.height*scale)/2;
+    ctx.drawImage(canvas,x,y,canvas.width*scale,canvas.height*scale);
+
+    // Watermark
+    ctx.fillStyle='rgba(247,193,75,0.7)';
+    ctx.font='bold 36px sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText('Mancho School · Asana Wrapped', storyW/2, storyH-60);
+
+    const link=document.createElement('a');
+    link.download=`mancho_wrapped_slide${current+1}.png`;
+    link.href=out.toDataURL('image/png');
+    link.click();
+
+    lo.style.display='none';
+    const toast=document.getElementById('toast');
+    toast.classList.add('show');
+    setTimeout(()=>toast.classList.remove('show'),2500);
+  } catch(err) {
+    lo.style.display='none';
+    alert('Не удалось сохранить. Попробуй сделать скриншот вручную.');
+    console.error(err);
+  }
+}
+</script>
+<style>
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+</style>
+</body>
+</html>
