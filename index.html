@@ -109,6 +109,37 @@ body { background:var(--bg); color:var(--text); font-family:'Manrope',sans-serif
 .drop-btn:hover{transform:scale(1.05);box-shadow:0 0 50px rgba(247,193,75,0.5);}
 #fileInput{position:absolute;inset:0;opacity:0;cursor:pointer;}
 
+
+.period-selector {
+  display:flex;
+  gap:10px;
+  margin-bottom:28px;
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:100px;
+  padding:5px;
+}
+.period-btn {
+  flex:1;
+  padding:10px 20px;
+  border-radius:100px;
+  border:none;
+  background:transparent;
+  color:var(--muted);
+  font-family:'Unbounded',sans-serif;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:1px;
+  cursor:pointer;
+  transition:all 0.25s;
+  white-space:nowrap;
+}
+.period-btn.active {
+  background:var(--y);
+  color:#07070f;
+  box-shadow:0 0 20px rgba(247,193,75,0.4);
+}
+
 .upload-steps {
   display:flex;
   gap:32px;
@@ -306,8 +337,18 @@ body { background:var(--bg); color:var(--text); font-family:'Manrope',sans-serif
 
   <div class="upload-logo">✦ Mancho School</div>
   <div class="upload-title">Твой<br><span>Asana</span><br>Wrapped</div>
-  <div class="upload-sub">Загрузи CSV-экспорт из Asana и узнай, как прошёл твой год в Mancho</div>
+  <div class="upload-sub">Загрузи CSV-экспорт из Asana, выбери период и узнай свою статистику в Mancho</div>
 
+  <div class="period-selector">
+    <button class="period-btn active" id="btnAll" onclick="setPeriod('all')">Всё время</button>
+    <button class="period-btn" id="btnMonth" onclick="setPeriod('month')">Последний месяц</button>
+    <button class="period-btn" id="btnCustom" onclick="setPeriod('custom')">Свой период</button>
+  </div>
+  <div id="customRange" style="display:none;margin-bottom:20px;display:none;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center;">
+    <input type="month" id="dateFrom" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:var(--text);padding:8px 14px;border-radius:10px;font-family:'Manrope',sans-serif;font-size:13px;">
+    <span style="color:var(--muted);font-size:13px;">—</span>
+    <input type="month" id="dateTo" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:var(--text);padding:8px 14px;border-radius:10px;font-family:'Manrope',sans-serif;font-size:13px;">
+  </div>
   <div class="drop-zone" id="dropZone">
     <input type="file" id="fileInput" accept=".csv">
     <span class="drop-icon">📂</span>
@@ -487,7 +528,22 @@ const MONTH_NAMES = {
   '07':'Июл','08':'Авг','09':'Сен','10':'Окт','11':'Ноя','12':'Дек'
 };
 
-function analyzeCSV(rows) {
+function getPeriodLabel(rows) {
+  if (selectedPeriod === 'all') return 'Всё время';
+  if (selectedPeriod === 'month') {
+    const now = new Date();
+    return now.toLocaleString('ru', {month:'long', year:'numeric'});
+  }
+  const fv = document.getElementById('dateFrom').value;
+  const tv = document.getElementById('dateTo').value;
+  if (fv && tv) {
+    const fmt = s => { const [y,m] = s.split('-'); return new Date(y,m-1,1).toLocaleString('ru',{month:'short',year:'numeric'}); };
+    return fmt(fv) + ' — ' + fmt(tv);
+  }
+  return 'Выбранный период';
+}
+
+function analyzeCSV(rows, allRows) {
   const completed = rows.filter(r => r['Completed At']);
   let onTime = 0, late = 0;
   completed.forEach(r => {
@@ -517,13 +573,52 @@ function analyzeCSV(rows) {
 
   const name = rows.find(r => r['Assignee'])?.['Assignee'] || 'Студент';
 
-  return { rows, completed, onTime, late, projects, months, directions, name };
+  const periodLabel = getPeriodLabel(rows);
+  return { rows, completed, onTime, late, projects, months, directions, name, periodLabel };
 }
 
 // ============ STATE ============
 let SLIDES = 7;
 let current = 0;
 let data = null;
+
+let selectedPeriod = 'all';
+let customFrom = null;
+let customTo = null;
+
+function setPeriod(p) {
+  selectedPeriod = p;
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn' + p.charAt(0).toUpperCase() + p.slice(1)).classList.add('active');
+  const cr = document.getElementById('customRange');
+  cr.style.display = p === 'custom' ? 'flex' : 'none';
+}
+
+function filterRowsByPeriod(rows) {
+  if (selectedPeriod === 'all') return rows;
+
+  let from, to;
+  if (selectedPeriod === 'month') {
+    const now = new Date();
+    from = new Date(now.getFullYear(), now.getMonth(), 1);
+    to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  } else {
+    const fv = document.getElementById('dateFrom').value;
+    const tv = document.getElementById('dateTo').value;
+    if (!fv || !tv) return rows;
+    from = new Date(fv + '-01');
+    const [ty, tm] = tv.split('-').map(Number);
+    to = new Date(ty, tm, 0);
+  }
+
+  return rows.filter(r => {
+    const created = parseDate(r['Created At']);
+    const completed = parseDate(r['Completed At']);
+    const ref = completed || created;
+    if (!ref) return false;
+    return ref >= from && ref <= to;
+  });
+}
 
 // ============ UPLOAD ============
 const dropZone = document.getElementById('dropZone');
@@ -541,8 +636,9 @@ function handleFile(file) {
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      const rows = parseCSV(e.target.result);
-      data = analyzeCSV(rows);
+      const allRows = parseCSV(e.target.result);
+      const rows = filterRowsByPeriod(allRows);
+      data = analyzeCSV(rows, allRows);
       buildWrapped(data);
       document.getElementById('uploadScreen').style.display = 'none';
       document.getElementById('wrappedScreen').style.display = 'block';
@@ -562,7 +658,7 @@ function handleFile(file) {
 function buildWrapped(d) {
   // Cover
   document.getElementById('coverName').textContent = d.name;
-  document.getElementById('coverSub').textContent = `${d.rows.length} задач · Mancho School`;
+  document.getElementById('coverSub').textContent = `${d.rows.length} задач · ${d.periodLabel}`;
 
   // Slide 1
   document.getElementById('taskDesc').textContent =
